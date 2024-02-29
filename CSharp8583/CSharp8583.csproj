@@ -1,0 +1,44 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;netstandard2.1;net48;net47;net46;net45;net40;net60;net70</TargetFrameworks>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageProjectUrl>https://github.com/CBidis/CSharp8583</PackageProjectUrl>
+    <License>https://github.com/CBidis/CSharp8583/blob/master/LICENSE</License>
+    <RepositoryUrl>https://github.com/CBidis/CSharp8583</RepositoryUrl>
+    <Authors>Christos Charalampidis (CBidis)</Authors>
+    <PackageTags>ISO8583,8583,ISO,CSharp8583</PackageTags>
+    <PackageReleaseNotes>This is the latest release and a major bump to 2.0.0, added support for NET6.0, NET7.0, added contributors commits</PackageReleaseNotes>
+    <Description>The CSharp8583 Library is a C# implementation of the ISO-8583 Protocol as a multiple target framework library</Description>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <Version>2.0.0</Version>
+    <FileVersion>2.0.0.0</FileVersion>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DocumentationFile>\CSharp8583\CSharp8583\CSharp8583.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DocumentationFile>\CSharp8583\CSharp8583\CSharp8583.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.ValueTuple" Version="4.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--<None Update="CSharp8583.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>-->
+    <None Update="Specifications\DefaultIsoMessage.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Specifications\" />
+  </ItemGroup>
+
+</Project>
