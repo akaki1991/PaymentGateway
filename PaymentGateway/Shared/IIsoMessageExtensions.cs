@@ -4,5 +4,6 @@ namespace PaymentGateway.Shared;
 
 public static class IIsoMessageExtensions
 {
-    public static bool IsNetworkManagementRequest(this IIsoMessage isoMessage) => isoMessage?.MTI?.Value == "1804";
+    public static bool IsNetworkManagementRequest(this IIsoMessage isoMessage) =>
+        isoMessage?.MTI?.Value == "1804";
 }

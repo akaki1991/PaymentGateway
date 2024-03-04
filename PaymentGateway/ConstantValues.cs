@@ -5,6 +5,6 @@ namespace PaymentGateway;
 
 public static class ConstantValues
 {
-    public static IsoMessage GetDefaultIsoSpecsFromFile() => 
+    public static IsoMessage? GetDefaultIsoSpecsFromFile() => 
         JsonConvert.DeserializeObject<IsoMessage>(File.ReadAllText("./DefaultIsoMessage.json"));
 }
