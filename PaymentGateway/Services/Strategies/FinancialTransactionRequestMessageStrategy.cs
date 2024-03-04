@@ -2,7 +2,7 @@
 
 namespace PaymentGateway.Services.Strategies;
 
-public class AuthorizeMessageStrategy : IMessageStrategy
+public class FinancialTransactionRequestMessageStrategy : IMessageStrategy
 {
     public Task HandleMessage(string data)
     {

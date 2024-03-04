@@ -10,13 +10,9 @@ public class Message
 
     public Guid Id { get; set; }
     /// <summary>
-    /// Content of the message in original form
+    /// Content of the message in accii format
     /// </summary>
     public string? Content { get; set; }
-    /// <summary>
-    /// Message send status after Encoding
-    /// </summary>
     public SendStatus SendStatus { get; set; }
-
     public DateTimeOffset CratedAt { get; set; }
 }

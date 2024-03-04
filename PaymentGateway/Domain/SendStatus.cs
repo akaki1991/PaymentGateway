@@ -3,6 +3,8 @@
 public enum SendStatus
 {
     None = 0,
-    Success = 1,
-    Failed = 2,
+    RecivedFromUFC = 1,
+    SentToUFC = 2,
+    SentToD8 = 3,
+    RecivedFromD8 = 4,
 }

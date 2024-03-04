@@ -1,12 +1,11 @@
-using System.Buffers;
-using System.Net.Sockets;
-using System.Net;
-using System.Text;
-using PaymentGateway.Services.Interfaces;
-using PaymentGateway.Shared;
-using CSharp8583.Common;
 using CSharp8583;
+using CSharp8583.Common;
+using PaymentGateway.Services.Interfaces;
 using PaymentGateway.Shared.Helpers;
+using System.Buffers;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
 
 namespace PaymentGateway;
 
@@ -35,7 +34,6 @@ public class Worker(ILogger<Worker> logger, ITransactionDataParser transactionDa
 
     async Task HandleClientAsync(TcpClient client, CancellationToken cancellationToken)
     {
-        Task.Delay(1000, cancellationToken).Wait(cancellationToken);
         var bufferPool = ArrayPool<byte>.Shared;
         var buffer = bufferPool.Rent(8192);
         try
