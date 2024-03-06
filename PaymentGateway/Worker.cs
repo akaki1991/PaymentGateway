@@ -1,10 +1,9 @@
 using CSharp8583;
 using CSharp8583.Common;
-using Microsoft.Extensions.Logging;
-using PaymentGateway.Services.Implementations;
 using PaymentGateway.Services.Interfaces;
 using PaymentGateway.Shared.Helpers;
 using System.Buffers;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -13,20 +12,21 @@ namespace PaymentGateway;
 
 public class Worker : BackgroundService
 {
+    private const string SuccessMessageLog = "Message: {clientMessage}, Date: {requestDate}, Execution time elapsed (milliseconds): {ElapsedMilliseconds}";
+    private const string FailMessageLog = "Message: {clientMessage}, Date: {requestDate}, Execution time elapsed (milliseconds): {ElapsedMilliseconds}, Exception: {Message}";
+
     private readonly ILogger<Worker> _logger;
     private readonly ITransactionDataParser _transactionDataParser;
-    private readonly string _filePath;
 
     public Worker(ILogger<Worker> logger, ITransactionDataParser transactionDataParser)
     {
         _logger = logger;
         _transactionDataParser = transactionDataParser;
-        _filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Log", "log.txt");
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var ipAddress = IPAddress.Loopback;
+        var ipAddress = IPAddress.Parse("10.195.105.126");
         var port = 8000;
         var listener = new TcpListener(ipAddress, port);
 
@@ -44,6 +44,9 @@ public class Worker : BackgroundService
 
     async Task HandleClientAsync(TcpClient client, CancellationToken cancellationToken)
     {
+        var requestDate = DateTime.UtcNow;
+        var stopWatch = new Stopwatch();
+        stopWatch.Start();
         StringBuilder clientMessage = new(string.Empty);
         var bufferPool = ArrayPool<byte>.Shared;
         var buffer = bufferPool.Rent(8000);
@@ -51,7 +54,7 @@ public class Worker : BackgroundService
         {
             using (client)
             {
-                var stream = client.GetStream();
+                using var stream = client.GetStream();
                 int numberOfBytesRead;
 
                 try
@@ -73,13 +76,22 @@ public class Worker : BackgroundService
                 //var responseMessage = HandleNetworkManagementRequest(message);
 
                 await stream.WriteAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
-                File.AppendAllText(_filePath, clientMessage + Environment.NewLine);
+
+                stopWatch.Stop();
+                _logger.LogInformation(SuccessMessageLog,
+                                       clientMessage,
+                                       requestDate,
+                                       stopWatch.ElapsedMilliseconds);
             }
         }
         catch (Exception e)
         {
-            File.AppendAllText(_filePath, $"{clientMessage} Exception: {e.Message}" + Environment.NewLine);
-            Console.WriteLine($"Exception in handling client: {e.Message}");
+            stopWatch.Stop();
+            _logger.LogInformation(FailMessageLog,
+                                   clientMessage,
+                                   requestDate,
+                                   stopWatch.ElapsedMilliseconds,
+                                   e.Message);
         }
     }
 
