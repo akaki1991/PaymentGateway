@@ -29,10 +29,16 @@
 
   <ItemGroup>
     <Folder Include="Infrstructure\" />
-    <Folder Include="Services\Factories\" />
+    <Folder Include="Log\" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\CSharp8583\CSharp8583.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Log\log.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>

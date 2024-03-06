@@ -1,5 +1,7 @@
 using CSharp8583;
 using CSharp8583.Common;
+using Microsoft.Extensions.Logging;
+using PaymentGateway.Services.Implementations;
 using PaymentGateway.Services.Interfaces;
 using PaymentGateway.Shared.Helpers;
 using System.Buffers;
@@ -9,10 +11,18 @@ using System.Text;
 
 namespace PaymentGateway;
 
-public class Worker(ILogger<Worker> logger, ITransactionDataParser transactionDataParser) : BackgroundService
+public class Worker : BackgroundService
 {
-    private readonly ILogger<Worker> _logger = logger;
-    private readonly ITransactionDataParser _transactionDataParser = transactionDataParser;
+    private readonly ILogger<Worker> _logger;
+    private readonly ITransactionDataParser _transactionDataParser;
+    private readonly string _filePath;
+
+    public Worker(ILogger<Worker> logger, ITransactionDataParser transactionDataParser)
+    {
+        _logger = logger;
+        _transactionDataParser = transactionDataParser;
+        _filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Log", "log.txt");
+    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -28,14 +38,15 @@ public class Worker(ILogger<Worker> logger, ITransactionDataParser transactionDa
             var client = await listener.AcceptTcpClientAsync(stoppingToken);
             Console.WriteLine("Connected to a client. Handling connection in a separate task...");
 
-            _ = Task.Run(() => HandleClientAsync(client, stoppingToken), stoppingToken);
+            _ = HandleClientAsync(client, stoppingToken);
         }
     }
 
     async Task HandleClientAsync(TcpClient client, CancellationToken cancellationToken)
     {
+        StringBuilder clientMessage = new(string.Empty);
         var bufferPool = ArrayPool<byte>.Shared;
-        var buffer = bufferPool.Rent(8192);
+        var buffer = bufferPool.Rent(8000);
         try
         {
             using (client)
@@ -43,25 +54,32 @@ public class Worker(ILogger<Worker> logger, ITransactionDataParser transactionDa
                 var stream = client.GetStream();
                 int numberOfBytesRead;
 
-                while ((numberOfBytesRead = await stream.ReadAsync(buffer, cancellationToken)) != 0)
+                try
                 {
-                    var clientMessage = Encoding.ASCII.GetString(buffer, 0, numberOfBytesRead);
-
-                    var message = _transactionDataParser.ParseMessege(ByteArrayHelpers.HexToASCII(clientMessage));
-
-                    Console.WriteLine($"Received: {clientMessage}");
-                    var responseMessage = HandleNetworkManagementRequest(message);
-                    await stream.WriteAsync(responseMessage.AsMemory(0, responseMessage.Length), cancellationToken);
+                    while (client.Available > 0)
+                    {
+                        numberOfBytesRead = await stream.ReadAsync(buffer, cancellationToken);
+                        clientMessage.Append(Encoding.ASCII.GetString(buffer, 0, numberOfBytesRead));
+                    }
                 }
+                finally
+                {
+                    bufferPool.Return(buffer);
+                }
+
+                var message = _transactionDataParser.ParseMessege(ByteArrayHelpers.HexToASCII(clientMessage.ToString()));
+
+                Console.WriteLine($"Received: {clientMessage}");
+                //var responseMessage = HandleNetworkManagementRequest(message);
+
+                await stream.WriteAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
+                File.AppendAllText(_filePath, clientMessage + Environment.NewLine);
             }
         }
         catch (Exception e)
         {
+            File.AppendAllText(_filePath, $"{clientMessage} Exception: {e.Message}" + Environment.NewLine);
             Console.WriteLine($"Exception in handling client: {e.Message}");
-        }
-        finally
-        {
-            bufferPool.Return(buffer);
         }
     }
 
