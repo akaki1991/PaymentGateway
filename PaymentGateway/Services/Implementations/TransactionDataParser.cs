@@ -7,7 +7,7 @@ namespace PaymentGateway.Services.Implementations;
 
 public class TransactionDataParser : ITransactionDataParser
 {
-    public IIsoMessage ParseMessege(string message)
+    public IIsoMessage ParseMessage(string message)
     {
         var asciiBytes = Encoding.ASCII.GetBytes(message);
 

@@ -4,5 +4,5 @@ namespace PaymentGateway.Services.Interfaces;
 
 public interface ITransactionDataParser
 {
-    public IIsoMessage ParseMessege(string message);
+    public IIsoMessage ParseMessage(string message);
 }

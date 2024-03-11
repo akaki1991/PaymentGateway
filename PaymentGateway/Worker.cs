@@ -4,6 +4,7 @@ using PaymentGateway.Services.Interfaces;
 using PaymentGateway.Shared.Helpers;
 using System.Buffers;
 using System.Diagnostics;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -17,6 +18,7 @@ public class Worker : BackgroundService
 
     private readonly ILogger<Worker> _logger;
     private readonly ITransactionDataParser _transactionDataParser;
+    private readonly SemaphoreSlim _connectionSemaphore = new(initialCount: 150); // Adjust the count as needed
 
     public Worker(ILogger<Worker> logger, ITransactionDataParser transactionDataParser)
     {
@@ -28,82 +30,80 @@ public class Worker : BackgroundService
     {
         var ipAddress = IPAddress.Parse("127.0.0.1");
         var port = 8000;
-        using var listener = new TcpListener(ipAddress, port);
+        var localEndPoint = new IPEndPoint(ipAddress, port);
 
-        listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+        using var listener = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
-        listener.Start();
+        listener.Bind(localEndPoint);
+        listener.Listen(backlog: 100); // The maximum length of the pending connections queue.
         Console.WriteLine($"Server started on {ipAddress}:{port}. Waiting for connections...");
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            var client = await listener.AcceptTcpClientAsync(stoppingToken);
+            var client = await listener.AcceptAsync(stoppingToken);
             Console.WriteLine("Connected to a client. Handling connection in a separate task...");
 
-            _ = HandleClientAsync(client, stoppingToken);
+            _ = HandleClientAsync(client, stoppingToken).ContinueWith(t => _connectionSemaphore.Release());
         }
     }
 
-    async Task HandleClientAsync(TcpClient client, CancellationToken cancellationToken)
+    private async Task HandleClientAsync(Socket client, CancellationToken cancellationToken)
     {
+        if (!client.Connected)
+        {
+            Console.WriteLine("Client is not connected.");
+            return;
+        }
+
         var requestDate = DateTime.UtcNow;
         var stopWatch = new Stopwatch();
         stopWatch.Start();
         StringBuilder clientMessage = new(string.Empty);
         var bufferPool = ArrayPool<byte>.Shared;
         var buffer = bufferPool.Rent(8000);
+
         try
         {
-            using (client)
+            int numberOfBytesRead;
+            try
             {
-                using var stream = client.GetStream();
-                int numberOfBytesRead;
-
-                try
+                while (client.Available > 0)
                 {
-                    while (client.Available > 0)
-                    {
-                        numberOfBytesRead = await stream.ReadAsync(buffer, cancellationToken);
-                        clientMessage.Append(Encoding.ASCII.GetString(buffer, 0, numberOfBytesRead));
-                    }
+                    numberOfBytesRead = await client.ReceiveAsync(new ArraySegment<byte>(buffer), SocketFlags.None, cancellationToken);
+                    clientMessage.Append(Encoding.ASCII.GetString(buffer, 0, numberOfBytesRead));
                 }
-                finally
-                {
-                    bufferPool.Return(buffer);
-                }
-
-                var message = _transactionDataParser.ParseMessege(ByteArrayHelpers.HexToASCII(clientMessage.ToString()));
-
-                Console.WriteLine($"Received: {clientMessage}");
-                //var responseMessage = HandleNetworkManagementRequest(message);
-
-                await stream.WriteAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
-
-                stopWatch.Stop();
-                _logger.LogInformation(SuccessMessageLog,
-                                       clientMessage,
-                                       requestDate,
-                                       stopWatch.ElapsedMilliseconds);
             }
+            finally
+            {
+                bufferPool.Return(buffer);
+            }
+
+            var message = _transactionDataParser.ParseMessage(ByteArrayHelpers.HexToASCII(clientMessage.ToString()));
+            Console.WriteLine($"Received: {clientMessage}");
+
+            var sendMessage = HandleNetworkManagementRequest(message);
+
+            await client.SendAsync(new ArraySegment<byte>(sendMessage), SocketFlags.None, cancellationToken);
+            stopWatch.Stop();
+            _logger.LogInformation(SuccessMessageLog, clientMessage, requestDate, stopWatch.ElapsedMilliseconds);
         }
         catch (Exception e)
         {
             stopWatch.Stop();
-            _logger.LogInformation(FailMessageLog,
-                                   clientMessage,
-                                   requestDate,
-                                   stopWatch.ElapsedMilliseconds,
-                                   e.Message);
+            _logger.LogInformation(FailMessageLog, clientMessage, requestDate, stopWatch.ElapsedMilliseconds, e.Message);
         }
-
-        client.Close();
+        finally
+        {
+            client.Shutdown(SocketShutdown.Both);
+            client.Close();
+        }
     }
 
     public static byte[] HandleNetworkManagementRequest(IIsoMessage message)
     {
         var iso8583 = new Iso8583(new FieldValidator());
-        message.MTI.Value = "1814";
-        message.SetFieldValue(39, "800");
+        //message.MTI.Value = "1814";
+        //message.SetFieldValue(39, "800");
 
         var asciiMessageBytes = iso8583.Build(message);
 
