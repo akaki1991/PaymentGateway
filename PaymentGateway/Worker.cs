@@ -54,7 +54,7 @@ public class Worker : BackgroundService
         {
             using (client)
             {
-                var stream = client.GetStream();
+                using var stream = client.GetStream();
                 int numberOfBytesRead;
 
                 try
