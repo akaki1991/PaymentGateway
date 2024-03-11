@@ -26,9 +26,11 @@ public class Worker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var ipAddress = IPAddress.Parse("10.195.105.126");
+        var ipAddress = IPAddress.Parse("127.0.0.1");
         var port = 8000;
-        var listener = new TcpListener(ipAddress, port);
+        using var listener = new TcpListener(ipAddress, port);
+
+        listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 
         listener.Start();
         Console.WriteLine($"Server started on {ipAddress}:{port}. Waiting for connections...");
@@ -93,6 +95,8 @@ public class Worker : BackgroundService
                                    stopWatch.ElapsedMilliseconds,
                                    e.Message);
         }
+
+        client.Close();
     }
 
     public static byte[] HandleNetworkManagementRequest(IIsoMessage message)
