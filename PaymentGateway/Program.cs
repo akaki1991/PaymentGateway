@@ -24,6 +24,7 @@ builder.Services.AddWindowsService(options =>
 });
 
 builder.Services.AddTransient<ITransactionDataParser, TransactionDataParser>();
+builder.Services.AddSingleton<TCPServer>();
 builder.Services.AddHostedService<Worker>();
 
 var host = builder.Build();

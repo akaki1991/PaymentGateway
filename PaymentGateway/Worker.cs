@@ -18,29 +18,18 @@ public class Worker : BackgroundService
 
     private readonly ILogger<Worker> _logger;
     private readonly ITransactionDataParser _transactionDataParser;
+    private readonly TCPServer _tCPServer;
 
-    public Worker(ILogger<Worker> logger, ITransactionDataParser transactionDataParser)
+    public Worker(ILogger<Worker> logger, ITransactionDataParser transactionDataParser, TCPServer tCPServer)
     {
         _logger = logger;
         _transactionDataParser = transactionDataParser;
+        _tCPServer = tCPServer;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var ipAddress = IPAddress.Parse("127.0.0.1");
-        var port = 8000;
-        var listener = new TcpListener(ipAddress, port);
-
-        listener.Start();
-        Console.WriteLine($"Server started on {ipAddress}:{port}. Waiting for connections...");
-
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            var client = await listener.AcceptTcpClientAsync(stoppingToken);
-            Console.WriteLine("Connected to a client. Handling connection in a separate task...");
-
-            _ = HandleClientAsync(client, stoppingToken);
-        }
+        await _tCPServer.StartServer(stoppingToken);
     }
 
     async Task HandleClientAsync(TcpClient client, CancellationToken cancellationToken)
