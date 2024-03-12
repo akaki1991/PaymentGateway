@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 
 namespace PaymentGateway;
 
@@ -26,7 +27,7 @@ public class Worker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var ipAddress = IPAddress.Parse("10.195.105.126");
+        var ipAddress = IPAddress.Parse("127.0.0.1");
         var port = 8000;
         var listener = new TcpListener(ipAddress, port);
 
@@ -70,12 +71,15 @@ public class Worker : BackgroundService
                     bufferPool.Return(buffer);
                 }
 
+                if (clientMessage.Length == 0)
+                    return;
+
                 var message = _transactionDataParser.ParseMessege(ByteArrayHelpers.HexToASCII(clientMessage.ToString()));
 
                 Console.WriteLine($"Received: {clientMessage}");
-                //var responseMessage = HandleNetworkManagementRequest(message);
+                var responseMessage = HandleNetworkManagementRequest(message);
 
-                await stream.WriteAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
+                await stream.WriteAsync(responseMessage.AsMemory(0, responseMessage.Length), cancellationToken);
 
                 stopWatch.Stop();
                 _logger.LogInformation(SuccessMessageLog,
@@ -92,6 +96,67 @@ public class Worker : BackgroundService
                                    requestDate,
                                    stopWatch.ElapsedMilliseconds,
                                    e.Message);
+        }
+        finally
+        {
+            client.Close();
+        }
+    }
+
+    private void WorkerThread(TcpClient client)
+    {
+        var requestDate = DateTime.UtcNow;
+        var stopWatch = new Stopwatch();
+        stopWatch.Start();
+        StringBuilder clientMessage = new(string.Empty);
+        var bufferPool = ArrayPool<byte>.Shared;
+        var buffer = bufferPool.Rent(8000);
+        try
+        {
+            using (client)
+            {
+                using var stream = client.GetStream();
+                int numberOfBytesRead;
+
+                try
+                {
+                    while (client.Available > 0)
+                    {
+                        numberOfBytesRead = stream.Read(buffer, 0, buffer.Length);
+                        clientMessage.Append(Encoding.ASCII.GetString(buffer, 0, numberOfBytesRead));
+                    }
+                }
+                finally
+                {
+                    bufferPool.Return(buffer);
+                }
+
+                var message = _transactionDataParser.ParseMessege(ByteArrayHelpers.HexToASCII(clientMessage.ToString()));
+
+                Console.WriteLine($"Received: {clientMessage}");
+                var responseMessage = HandleNetworkManagementRequest(message);
+
+                stream.Write(responseMessage, 0, responseMessage.Length);
+
+                stopWatch.Stop();
+                _logger.LogInformation(SuccessMessageLog,
+                                       clientMessage,
+                                       requestDate,
+                                       stopWatch.ElapsedMilliseconds);
+            }
+        }
+        catch (Exception e)
+        {
+            stopWatch.Stop();
+            _logger.LogInformation(FailMessageLog,
+                                   clientMessage,
+                                   requestDate,
+                                   stopWatch.ElapsedMilliseconds,
+                                   e.Message);
+        }
+        finally
+        {
+            client.Close();
         }
     }
 
