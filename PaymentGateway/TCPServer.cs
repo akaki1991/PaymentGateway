@@ -7,6 +7,7 @@ using System.Text;
 using CSharp8583;
 using CSharp8583.Common;
 using PaymentGateway.Services.Interfaces;
+using System;
 
 namespace PaymentGateway;
 
@@ -28,7 +29,7 @@ public class TCPServer
     public async Task StartServer(CancellationToken cancellationToken)
     {
         // Establish the local endpoint for the socket.
-        IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
+        IPAddress ipAddress = IPAddress.Parse("10.195.105.126");
         int port = 8000;
         IPEndPoint localEndPoint = new IPEndPoint(ipAddress, port);
 
@@ -67,11 +68,12 @@ public class TCPServer
         var requestDate = DateTimeOffset.UtcNow;
         Stopwatch sw = Stopwatch.StartNew();
         StringBuilder message = new(string.Empty);
+        var bufferPool = ArrayPool<byte>.Shared;
+        var buffer = bufferPool.Rent(8000);
         try
         {
             //await _semaphore.WaitAsync(); // Acquire the semaphore
-
-            byte[] buffer = new byte[1024];
+            
 
             while (true)
             {
@@ -104,6 +106,7 @@ public class TCPServer
         finally
         {
             //_semaphore.Release(); // Release the semaphore
+            bufferPool.Return(buffer);
             handler.Shutdown(SocketShutdown.Both);
             handler.Close();
         }
