@@ -85,11 +85,19 @@ public class TCPServer
 
                 if (handler.Available == 0)
                 {
-                    var parsedMessage = _transactionDataParser.ParseMessege(ByteArrayHelpers.HexToASCII(message.ToString()));
+                    var pureMessage = message.ToString()[6..];
+                    var parsedMessage = _transactionDataParser.ParseMessege(pureMessage);
 
                     var messageStrategy = _messageStrategyFactory.GetStrategy(parsedMessage.MTI.Value);
 
-                    var response = await messageStrategy.HandleMessageAsync(parsedMessage);
+                    byte[] response = await messageStrategy.HandleMessageAsync(parsedMessage);
+
+                    var responseAsString = Encoding.ASCII.GetString(response);
+
+                    responseAsString = responseAsString.Length.ToString().PadLeft(6, '0') + responseAsString;
+
+                    response = Encoding.ASCII.GetBytes(responseAsString);
+
                     await handler.SendAsync(new ArraySegment<byte>(response, 0, response.Length), SocketFlags.None);
                     break;
                 }
