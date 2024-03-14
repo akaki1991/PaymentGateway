@@ -15,23 +15,26 @@ public class TCPServer
 {
     private const string SuccessMessageLog = "Message: {clientMessage}, Date: {requestDate}, Execution time elapsed (milliseconds): {ElapsedMilliseconds}";
     private const string FailMessageLog = "Message: {clientMessage}, Date: {requestDate}, Execution time elapsed (milliseconds): {ElapsedMilliseconds}, Exception: {Message}";
-    //private static readonly SemaphoreSlim _semaphore = new(10, 10);
+
     private readonly ILogger<TCPServer> _logger;
-
     private readonly ITransactionDataParser _transactionDataParser;
+    private readonly IMessageStrategyFactory _messageStrategyFactory;
 
-    public TCPServer(ILogger<TCPServer> logger, ITransactionDataParser transactionDataParser)
+    public TCPServer(ILogger<TCPServer> logger,
+        ITransactionDataParser transactionDataParser,
+        IMessageStrategyFactory messageStrategyFactory)
     {
         _logger = logger;
         _transactionDataParser = transactionDataParser;
+        _messageStrategyFactory = messageStrategyFactory;
     }
 
     public async Task StartServer(CancellationToken cancellationToken)
     {
         // Establish the local endpoint for the socket.
-        IPAddress ipAddress = IPAddress.Parse("10.195.105.126");
+        IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
         int port = 8000;
-        IPEndPoint localEndPoint = new IPEndPoint(ipAddress, port);
+        IPEndPoint localEndPoint = new(ipAddress, port);
 
         // Create a TCP/IP socket.
         Socket listener = new(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
@@ -72,9 +75,6 @@ public class TCPServer
         var buffer = bufferPool.Rent(8000);
         try
         {
-            //await _semaphore.WaitAsync(); // Acquire the semaphore
-            
-
             while (true)
             {
                 int bytesRead = await handler.ReceiveAsync(new ArraySegment<byte>(buffer), SocketFlags.None);
@@ -87,7 +87,9 @@ public class TCPServer
                 {
                     var parsedMessage = _transactionDataParser.ParseMessege(ByteArrayHelpers.HexToASCII(message.ToString()));
 
-                    var response = HandleNetworkManagementRequest(parsedMessage);
+                    var messageStrategy = _messageStrategyFactory.GetStrategy(parsedMessage.MTI.Value);
+
+                    var response = await messageStrategy.HandleMessageAsync(parsedMessage);
                     await handler.SendAsync(new ArraySegment<byte>(response, 0, response.Length), SocketFlags.None);
                     break;
                 }
@@ -105,7 +107,6 @@ public class TCPServer
         }
         finally
         {
-            //_semaphore.Release(); // Release the semaphore
             bufferPool.Return(buffer);
             handler.Shutdown(SocketShutdown.Both);
             handler.Close();

@@ -1,4 +1,5 @@
 using PaymentGateway;
+using PaymentGateway.Services.Factories;
 using PaymentGateway.Services.Implementations;
 using PaymentGateway.Services.Interfaces;
 using Serilog;
@@ -25,6 +26,7 @@ builder.Services.AddWindowsService(options =>
 
 builder.Services.AddTransient<ITransactionDataParser, TransactionDataParser>();
 builder.Services.AddSingleton<TCPServer>();
+builder.Services.AddSingleton<IMessageStrategyFactory, MessageStrategyFactory>();
 builder.Services.AddHostedService<Worker>();
 
 var host = builder.Build();

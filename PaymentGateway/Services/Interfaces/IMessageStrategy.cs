@@ -1,6 +1,9 @@
-﻿namespace PaymentGateway.Services.Interfaces;
+﻿using CSharp8583.Common;
+using System.Net.Sockets;
+
+namespace PaymentGateway.Services.Interfaces;
 
 public interface IMessageStrategy
 {
-    Task HandleMessage(string data);
+    ValueTask<byte[]> HandleMessageAsync(IIsoMessage data, TcpClient? tcpClient = null);
 }
