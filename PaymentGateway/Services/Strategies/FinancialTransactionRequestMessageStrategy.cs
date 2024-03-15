@@ -14,6 +14,6 @@ public class FinancialTransactionRequestMessageStrategy : IMessageStrategy
 
         var asciiMessageBytes = iso8583.Build(data);
 
-        return ValueTask.FromResult(ByteArrayHelpers.AsciiByteArrayToHexByteArray(asciiMessageBytes));
+        return ValueTask.FromResult(asciiMessageBytes);
     }
 }

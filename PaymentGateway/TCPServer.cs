@@ -8,6 +8,8 @@ using CSharp8583;
 using CSharp8583.Common;
 using PaymentGateway.Services.Interfaces;
 using System;
+using Microsoft.Extensions.Options;
+using PaymentGateway.Configuration;
 
 namespace PaymentGateway;
 
@@ -19,22 +21,24 @@ public class TCPServer
     private readonly ILogger<TCPServer> _logger;
     private readonly ITransactionDataParser _transactionDataParser;
     private readonly IMessageStrategyFactory _messageStrategyFactory;
+    private readonly PaymentGatewayConfig _gatewayConfig;
 
     public TCPServer(ILogger<TCPServer> logger,
         ITransactionDataParser transactionDataParser,
-        IMessageStrategyFactory messageStrategyFactory)
+        IMessageStrategyFactory messageStrategyFactory,
+        IOptions<PaymentGatewayConfig> options)
     {
         _logger = logger;
         _transactionDataParser = transactionDataParser;
         _messageStrategyFactory = messageStrategyFactory;
+        _gatewayConfig = options.Value;
     }
 
     public async Task StartServer(CancellationToken cancellationToken)
     {
         // Establish the local endpoint for the socket.
-        IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
-        int port = 8000;
-        IPEndPoint localEndPoint = new(ipAddress, port);
+        IPAddress ipAddress = IPAddress.Parse(_gatewayConfig.IpAddress);
+        IPEndPoint localEndPoint = new(ipAddress, _gatewayConfig.Port);
 
         // Create a TCP/IP socket.
         Socket listener = new(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
@@ -45,7 +49,7 @@ public class TCPServer
             listener.Bind(localEndPoint);
             listener.Listen(100);
 
-            Console.WriteLine($"Server started on {ipAddress}:{port}. Waiting for connections...");
+            Console.WriteLine($"Server started on {ipAddress}:{_gatewayConfig.Port}. Waiting for connections...");
 
             while (!cancellationToken.IsCancellationRequested)
             {

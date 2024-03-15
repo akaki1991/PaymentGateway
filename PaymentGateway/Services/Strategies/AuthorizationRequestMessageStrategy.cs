@@ -1,8 +1,7 @@
-﻿using CSharp8583.Common;
+﻿using CSharp8583;
+using CSharp8583.Common;
 using PaymentGateway.Services.Interfaces;
 using System.Net.Sockets;
-using CSharp8583;
-using PaymentGateway.Shared.Helpers;
 
 namespace PaymentGateway.Services.Strategies;
 
@@ -14,6 +13,6 @@ public class AuthorizationRequestMessageStrategy : IMessageStrategy
 
         var asciiMessageBytes = iso8583.Build(data);
 
-        return ValueTask.FromResult(ByteArrayHelpers.AsciiByteArrayToHexByteArray(asciiMessageBytes));
+        return ValueTask.FromResult(asciiMessageBytes);
     }
 }

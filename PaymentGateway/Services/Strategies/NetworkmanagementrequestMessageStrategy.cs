@@ -1,11 +1,8 @@
 ﻿using CSharp8583;
 using CSharp8583.Common;
-using PaymentGateway.Services.Interfaces;
-using PaymentGateway.Shared.Helpers;
-using System;
-using System.Net.Sockets;
-using System.Text;
 using CSharp8583.Models;
+using PaymentGateway.Services.Interfaces;
+using System.Net.Sockets;
 
 namespace PaymentGateway.Services.Strategies;
 

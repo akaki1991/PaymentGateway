@@ -1,4 +1,5 @@
 using PaymentGateway;
+using PaymentGateway.Configuration;
 using PaymentGateway.Services.Factories;
 using PaymentGateway.Services.Implementations;
 using PaymentGateway.Services.Interfaces;
@@ -28,6 +29,7 @@ builder.Services.AddTransient<ITransactionDataParser, TransactionDataParser>();
 builder.Services.AddSingleton<TCPServer>();
 builder.Services.AddSingleton<IMessageStrategyFactory, MessageStrategyFactory>();
 builder.Services.AddHostedService<Worker>();
+builder.Services.Configure<PaymentGatewayConfig>(options => builder.Configuration.GetSection(nameof(PaymentGatewayConfig)).Bind(options));
 
 var host = builder.Build();
 
