@@ -77,7 +77,7 @@ namespace CSharp8583
 
                 if (fieldProperties != null)
                 {
-                    if (fieldProperties.Position == IsoFields.F100
+                    if (fieldProperties.Position == IsoFields.F39
                         || fieldProperties.Position == IsoFields.F43)
                     {
                         Console.WriteLine();
